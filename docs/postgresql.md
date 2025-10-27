@@ -1,0 +1,106 @@
+# Guia de configuração do PostgreSQL
+
+Este guia apresenta diferentes formas de obter a string de conexão necessária para preencher o arquivo `.env` e executar o projeto.
+
+## 1. Docker Compose local
+
+A maneira mais simples de levantar um banco PostgreSQL localmente é utilizar o `docker-compose.yml` fornecido no repositório.
+
+1. Certifique-se de ter o Docker e o Docker Compose instalados.
+2. No diretório do projeto, execute:
+
+   ```bash
+docker compose up -d postgres
+   ```
+
+3. O serviço cria automaticamente o banco `mini_projeto_fullstack` com usuário e senha `mini_projeto` (confira o arquivo `docker-compose.yml`).
+4. Copie a string de conexão e preencha o `.env`:
+
+   ```env
+DATABASE_URL=postgresql://mini_projeto:mini_projeto@localhost:5432/mini_projeto_fullstack
+POSTGRES_SSL=false
+   ```
+
+> Para desligar o banco: `docker compose down`.
+
+## 2. Instalação local do PostgreSQL
+
+Caso prefira instalar o PostgreSQL nativamente (Windows, macOS ou Linux):
+
+1. Baixe o instalador oficial em [https://www.postgresql.org/download/](https://www.postgresql.org/download/).
+2. Durante a instalação, defina usuário, senha e porta. Anote essas informações.
+3. Crie um banco de dados (por exemplo, `mini_projeto_fullstack`).
+4. Monte a string de conexão no formato:
+
+   ```env
+DATABASE_URL=postgresql://SEU_USUARIO:SUA_SENHA@localhost:5432/mini_projeto_fullstack
+POSTGRES_SSL=false
+   ```
+
+## 3. Serviços gerenciados (nuvem)
+
+Também é possível utilizar um provedor em nuvem para não precisar instalar nada localmente. Algumas opções com planos gratuitos:
+
+- [Neon](https://neon.tech)
+- [Supabase](https://supabase.com)
+- [Render PostgreSQL](https://render.com)
+- [Railway](https://railway.app)
+
+O processo geral é:
+
+1. Crie uma conta e um projeto/banco PostgreSQL.
+2. Gere um usuário com permissões de leitura/escrita.
+3. Copie a string de conexão fornecida (normalmente no formato `postgresql://usuario:senha@host:porta/base`).
+4. Preencha o `.env`:
+
+   ```env
+DATABASE_URL=postgresql://usuario:senha@host:porta/base
+POSTGRES_SSL=true
+   ```
+
+> A variável `POSTGRES_SSL` habilita TLS quando necessário (muitos provedores exigem). Para ambientes locais, mantenha `false`.
+
+## 4. Estrutura de tabelas
+
+Com a string configurada, execute a aplicação (via `npm run dev`) para que as migrations sejam aplicadas? **Não há migrations automáticas.** Crie as tabelas manualmente antes de iniciar o servidor. Seguem scripts de referência:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending',
+  due_date TIMESTAMPTZ,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+```
+
+> Caso o provedor não permita `uuid-ossp`, utilize `gen_random_uuid()` (extensão `pgcrypto`) ou gere UUIDs pela aplicação.
+
+## 5. Variáveis de ambiente
+
+Após escolher a estratégia, copie `.env.example` para `.env` e ajuste as variáveis:
+
+```bash
+cp .env.example .env
+```
+
+Edite o arquivo resultante informando `DATABASE_URL`, `DATABASE_URL_PROD` (se for fazer deploy) e um `JWT_SECRET` seguro. Lembre-se de ativar `POSTGRES_SSL=true` ao usar provedores externos.
+
+Com isso o backend estará pronto para conectar-se ao PostgreSQL.
