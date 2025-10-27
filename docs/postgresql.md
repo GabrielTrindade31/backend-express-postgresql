@@ -64,6 +64,16 @@ POSTGRES_SSL=true
 
 Com a string configurada, execute a aplicação (via `npm run dev`) para que as migrations sejam aplicadas? **Não há migrations automáticas.** Crie as tabelas manualmente antes de iniciar o servidor. Seguem scripts de referência:
 
+Para aplicar o schema rapidamente quando estiver utilizando o banco que roda dentro do contêiner Docker, execute o comando abaixo **no terminal do host** (no diretório raiz do projeto):
+
+```bash
+cat sql/schema.sql | docker compose exec -T postgres psql -U mini_projeto -d mini_projeto_fullstack
+```
+
+O `cat` roda no host e envia o conteúdo do arquivo para o `psql` dentro do contêiner, evitando o erro “`sql/schema.sql: No such file or directory`”.
+
+Se você estiver com o `psql` instalado localmente (ou conectado a um provedor externo) e tiver acesso direto ao arquivo, também pode usar o atalho interativo tradicional:
+
 ```sql
 \i sql/schema.sql
 ```

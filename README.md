@@ -91,7 +91,13 @@ O repositório inclui um guia completo em [`docs/postgresql.md`](docs/postgresql
 
 Escolha a opção que melhor se adequa ao seu cenário e preencha `DATABASE_URL`/`DATABASE_URL_PROD` conforme indicado.
 
-> Após conectar-se ao banco, execute `\i sql/schema.sql` dentro do `psql` para criar as tabelas e extensões necessárias.
+> Após conectar-se ao banco, rode o comando abaixo a partir da raiz do projeto para criar as tabelas e extensões necessárias:
+>
+> ```bash
+> cat sql/schema.sql | docker compose exec -T postgres psql -U mini_projeto -d mini_projeto_fullstack
+> ```
+>
+> Se você estiver utilizando um `psql` instalado localmente (em vez de entrar pelo contêiner), ainda pode usar `\i sql/schema.sql` diretamente no prompt do banco.
 
 ## Execução local
 
