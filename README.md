@@ -1,6 +1,6 @@
 # Mini-Projeto Fullstack - Backend
 
-API REST desenvolvida em Node.js com TypeScript, Express e MongoDB, implementando autenticação baseada em JWT e estrutura em camadas (middlewares, routes, controllers, services, models e database). O projeto contempla validações robustas, hash de senhas com **bcrypt**, logs estruturados e exemplos de requisições via `curl`.
+API REST desenvolvida em Node.js com TypeScript, Express e PostgreSQL, implementando autenticação baseada em JWT e estrutura em camadas (middlewares, routes, controllers, services, models e database). O projeto contempla validações robustas, hash de senhas com **bcrypt**, logs estruturados e exemplos de requisições via `curl`.
 
 Na evolução desta versão foi adicionado um CRUD completo e autenticado de **tarefas** (to-do list) permitindo criar, listar, buscar por filtros, atualizar (PUT/PATCH) e remover itens associados ao usuário autenticado.
 
@@ -9,7 +9,7 @@ Na evolução desta versão foi adicionado um CRUD completo e autenticado de **t
 - [Tecnologias](#tecnologias)
 - [Arquitetura de pastas](#arquitetura-de-pastas)
 - [Configuração](#configuração)
-- [Configuração do MongoDB](#configuração-do-mongodb)
+- [Configuração do PostgreSQL](#configuração-do-postgresql)
 - [Execução local](#execução-local)
 - [Execução no GitHub Codespaces](#execução-no-github-codespaces)
 - [Scripts de requisição](#scripts-de-requisição)
@@ -21,7 +21,7 @@ Na evolução desta versão foi adicionado um CRUD completo e autenticado de **t
 
 - Node.js & TypeScript
 - Express
-- MongoDB & Mongoose
+- PostgreSQL & `pg`
 - JWT (`jsonwebtoken`)
 - Hash de senha com `bcryptjs`
 - Validações com `zod`
@@ -48,13 +48,13 @@ Cada camada possui responsabilidade única e isolada, facilitando a manutenção
 
 ## Configuração
 
-1. (Opcional, mas recomendado) Suba o MongoDB local com Docker Compose:
+1. (Opcional, mas recomendado) Suba o PostgreSQL local com Docker Compose:
 
    ```bash
-docker compose up -d mongo
+docker compose up -d postgres
    ```
 
-   > Caso prefira utilizar MongoDB Atlas ou outra instância remota, consulte a seção [Configuração do MongoDB](#configuração-do-mongodb).
+   > Caso prefira utilizar um serviço gerenciado (Neon, Supabase, Render, Railway, etc.), consulte a seção [Configuração do PostgreSQL](#configuração-do-postgresql).
 
 2. Copie o arquivo `.env.example` para `.env` e ajuste as variáveis de ambiente:
 
@@ -62,13 +62,14 @@ docker compose up -d mongo
    cp .env.example .env
    ```
 
-3. Configure os valores necessários (veja detalhes em [`docs/mongodb.md`](docs/mongodb.md)):
+3. Configure os valores necessários (veja detalhes em [`docs/postgresql.md`](docs/postgresql.md)):
 
    ```env
    PORT=3333
    NODE_ENV=development
-   MONGO_URI=mongodb://localhost:27017/mini_projeto_fullstack
-   MONGO_URI_PROD= # URI do cluster Atlas ou equivalente
+   DATABASE_URL=postgresql://mini_projeto:mini_projeto@localhost:5432/mini_projeto_fullstack
+   DATABASE_URL_PROD= # URI do banco utilizado no deploy
+   POSTGRES_SSL=false
    JWT_SECRET=dev-secret-change-me # substitua por uma chave segura em produção
    ```
 
@@ -80,19 +81,21 @@ docker compose up -d mongo
    npm install
    ```
 
-## Configuração do MongoDB
+## Configuração do PostgreSQL
 
-O repositório inclui um guia completo em [`docs/mongodb.md`](docs/mongodb.md) com três abordagens:
+O repositório inclui um guia completo em [`docs/postgresql.md`](docs/postgresql.md) com três abordagens principais:
 
-- **Docker Compose local** — basta executar `docker compose up -d mongo` para ter um banco pronto para uso.
-- **MongoDB Atlas (nuvem)** — passo a passo para criar cluster, usuário e copiar a string `mongodb+srv://`.
-- **GitHub Codespaces** — orientações específicas sobre portas, variáveis e execução no ambiente remoto.
+- **Docker Compose local** — execute `docker compose up -d postgres` para subir um banco pronto para uso.
+- **Instalação local do PostgreSQL** — passo a passo para configurar usuário, senha e banco manualmente.
+- **Serviços gerenciados (nuvem)** — orientações para utilizar provedores como Neon, Supabase, Render ou Railway.
 
-Escolha a opção que melhor se adequa ao seu cenário e preencha `MONGO_URI`/`MONGO_URI_PROD` conforme indicado.
+Escolha a opção que melhor se adequa ao seu cenário e preencha `DATABASE_URL`/`DATABASE_URL_PROD` conforme indicado.
+
+> Após conectar-se ao banco, execute `\i sql/schema.sql` dentro do `psql` para criar as tabelas e extensões necessárias.
 
 ## Execução local
 
-1. Certifique-se de que o MongoDB esteja ativo (via `docker compose up -d mongo` ou Atlas).
+1. Certifique-se de que o PostgreSQL esteja ativo (via `docker compose up -d postgres` ou serviço gerenciado equivalente).
 2. Inicie o servidor em modo desenvolvimento:
 
    ```bash
@@ -123,7 +126,7 @@ Cada tarefa criada pertence exclusivamente ao usuário autenticado e possui os s
 | `description` | `string`             | Não         | Texto livre para detalhamento (máx. 500 caracteres). |
 | `status`    | `"pending" \| "in_progress" \| "completed"` | Não (default `pending`) | Estado atual da tarefa. |
 | `dueDate`   | `string (ISO 8601)`     | Não         | Data limite. Envie `null` em PATCH/PUT para remover. |
-| `createdAt`/`updatedAt` | `Date`      | Automático  | Campos de auditoria gerenciados pelo Mongoose. |
+| `createdAt`/`updatedAt` | `Date`      | Automático  | Campos de auditoria gerenciados pelo PostgreSQL. |
 
 Requisições de usuários diferentes nunca acessam dados entre si — o serviço retorna **403** quando detecta tentativa de acesso a tarefas de outro usuário.
 
@@ -132,12 +135,12 @@ Para encerrar os serviços locais, utilize `Ctrl+C` no terminal da API e `docker
 ## Execução no GitHub Codespaces
 
 1. Crie o Codespace a partir deste repositório selecionando o template padrão de Node.js.
-2. Copie o arquivo `.env.example` para `.env` e informe as variáveis necessárias (você pode usar Docker ou uma URI do MongoDB Atlas).
+2. Copie o arquivo `.env.example` para `.env` e informe as variáveis necessárias (você pode usar Docker ou uma URI de PostgreSQL gerenciada).
 3. No terminal do Codespace, instale as dependências e inicie o banco/servidor:
 
    ```bash
    npm install
-   docker compose up -d mongo # ou configure MONGO_URI com Atlas
+   docker compose up -d postgres # ou configure DATABASE_URL com um provedor externo
    npm run dev
    ```
 
@@ -173,7 +176,7 @@ Antes de executar as requisições de tarefas configure, no Insomnia/Postman, os
 ## Boas práticas implementadas
 
 - Estrutura em camadas seguindo o padrão solicitado.
-- Conexão com MongoDB configurável para ambientes local e produção.
+- Conexão com PostgreSQL configurável para ambientes local e produção.
 - Validações semânticas para cadastro e login (tamanho mínimo, formato de e-mail, política de senhas forte).
 - Hash de senha com `bcrypt` e campo `password` não selecionável.
 - Tratamento centralizado de erros e respostas com status HTTP adequados.
@@ -200,10 +203,11 @@ Antes de executar as requisições de tarefas configure, no Insomnia/Postman, os
    vercel link
    ```
 
-3. Configure as variáveis de ambiente no painel da Vercel (`MONGO_URI_PROD`, `JWT_SECRET`, `NODE_ENV=production`) ou via CLI:
+3. Configure as variáveis de ambiente no painel da Vercel (`DATABASE_URL_PROD`, `POSTGRES_SSL`, `JWT_SECRET`, `NODE_ENV=production`) ou via CLI:
 
    ```bash
-   vercel env add MONGO_URI_PROD production
+   vercel env add DATABASE_URL_PROD production
+   vercel env add POSTGRES_SSL production
    vercel env add JWT_SECRET production
    vercel env add NODE_ENV production
    ```

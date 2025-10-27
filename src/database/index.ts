@@ -1,33 +1,36 @@
-import mongoose from 'mongoose';
+import { Pool } from 'pg';
 import { env } from '../config/env';
 import logger from '../utils/logger';
 
+export const pool = new Pool({
+  connectionString: env.databaseUrl,
+  ssl: env.databaseSsl ? { rejectUnauthorized: false } : false,
+});
+
+let isConnected = false;
+
 export const connectDatabase = async (): Promise<void> => {
+  if (isConnected) {
+    logger.debug('Conexão com PostgreSQL já estabelecida.');
+    return;
+  }
+
   try {
-    if (mongoose.connection.readyState === 1) {
-      logger.debug('Conexão com MongoDB já estabelecida.');
-      return;
-    }
-
-    if (mongoose.connection.readyState === 2) {
-      logger.debug('Conexão com MongoDB em andamento, aguardando finalização.');
-      await mongoose.connection.asPromise();
-      return;
-    }
-
-    if (!env.mongoUri) {
-      throw new Error('MongoDB URI não configurada.');
-    }
-
-    await mongoose.connect(env.mongoUri);
-    logger.info('Conectado ao MongoDB com sucesso.');
+    await pool.query('SELECT 1');
+    isConnected = true;
+    logger.info('Conectado ao PostgreSQL com sucesso.');
   } catch (error) {
-    logger.error('Erro ao conectar ao MongoDB', { error });
+    logger.error('Erro ao conectar ao PostgreSQL', { error });
     throw error;
   }
 };
 
 export const disconnectDatabase = async (): Promise<void> => {
-  await mongoose.disconnect();
-  logger.info('Conexão com MongoDB encerrada.');
+  if (!isConnected) {
+    return;
+  }
+
+  await pool.end();
+  isConnected = false;
+  logger.info('Conexão com PostgreSQL encerrada.');
 };
