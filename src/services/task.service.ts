@@ -1,7 +1,6 @@
-import { FilterQuery, Types } from 'mongoose';
 import { z } from 'zod';
 import { AppError } from '../errors/AppError';
-import { TaskDocument, TaskModel, TASK_STATUSES } from '../models/task.model';
+import { TaskRecord, taskRepository, TASK_STATUSES } from '../models/task.model';
 import logger from '../utils/logger';
 
 const statusEnum = z.enum(TASK_STATUSES);
@@ -69,42 +68,19 @@ const normalizeDueDate = (value?: Date | null): Date | undefined => {
   return value instanceof Date ? value : undefined;
 };
 
-const buildQueryFilters = (
-  userId: string,
-  filters: z.infer<typeof listTasksQuerySchema>
-): FilterQuery<TaskDocument> => {
-  const query: FilterQuery<TaskDocument> = { user: userId };
-
-  if (filters.status) {
-    query.status = filters.status;
-  }
-
-  if (filters.title) {
-    query.title = { $regex: filters.title, $options: 'i' };
-  }
-
-  if (filters.dueDate) {
-    const start = new Date(filters.dueDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(filters.dueDate);
-    end.setHours(23, 59, 59, 999);
-    query.dueDate = { $gte: start, $lte: end };
-  }
-
-  return query;
-};
-
 const ensureValidId = (taskId: string): void => {
-  if (!Types.ObjectId.isValid(taskId)) {
+  try {
+    z.string().uuid().parse(taskId);
+  } catch {
     throw new AppError('Identificador de tarefa inválido.', 400);
   }
 };
 
-const ensureOwnership = (task: TaskDocument, userId: string): void => {
-  if (task.user.toString() !== userId) {
+const ensureOwnership = (task: TaskRecord, userId: string): void => {
+  if (task.userId !== userId) {
     logger.warn('Tentativa de acesso a tarefa de outro usuário.', {
       taskId: task.id,
-      ownerId: task.user,
+      ownerId: task.userId,
       requesterId: userId,
     });
     throw new AppError('Você não tem permissão para acessar este recurso.', 403);
@@ -112,26 +88,28 @@ const ensureOwnership = (task: TaskDocument, userId: string): void => {
 };
 
 export class TaskService {
-  async createTask(userId: string, payload: unknown): Promise<TaskDocument> {
+  async createTask(userId: string, payload: unknown): Promise<TaskRecord> {
     const data = createTaskSchema.parse(payload);
 
-    const task = await TaskModel.create({
+    const task = await taskRepository.create({
       title: data.title,
       description: data.description,
       status: data.status ?? 'pending',
-      dueDate: normalizeDueDate(data.dueDate ?? undefined),
-      user: userId,
+      dueDate: normalizeDueDate(data.dueDate ?? undefined) ?? null,
+      userId,
     });
 
     logger.info('Tarefa criada com sucesso.', { userId, taskId: task.id });
     return task;
   }
 
-  async listTasks(userId: string, query: unknown): Promise<TaskDocument[]> {
+  async listTasks(userId: string, query: unknown): Promise<TaskRecord[]> {
     const filters = listTasksQuerySchema.parse(query ?? {});
-    const mongoQuery = buildQueryFilters(userId, filters);
-
-    const tasks = await TaskModel.find(mongoQuery).sort({ createdAt: -1 });
+    const tasks = await taskRepository.listByUser(userId, {
+      status: filters.status,
+      title: filters.title,
+      dueDate: filters.dueDate ? new Date(filters.dueDate) : undefined,
+    });
     logger.debug('Listagem de tarefas executada.', {
       userId,
       filters,
@@ -140,9 +118,9 @@ export class TaskService {
     return tasks;
   }
 
-  async getTaskById(userId: string, taskId: string): Promise<TaskDocument> {
+  async getTaskById(userId: string, taskId: string): Promise<TaskRecord> {
     ensureValidId(taskId);
-    const task = await TaskModel.findById(taskId);
+    const task = await taskRepository.findById(taskId);
 
     if (!task) {
       throw new AppError('Tarefa não encontrada.', 404);
@@ -154,11 +132,11 @@ export class TaskService {
     return task;
   }
 
-  async updateTask(userId: string, taskId: string, payload: unknown): Promise<TaskDocument> {
+  async updateTask(userId: string, taskId: string, payload: unknown): Promise<TaskRecord> {
     ensureValidId(taskId);
     const data = putTaskSchema.parse(payload);
 
-    const task = await TaskModel.findById(taskId);
+    const task = await taskRepository.findById(taskId);
 
     if (!task) {
       throw new AppError('Tarefa não encontrada.', 404);
@@ -166,26 +144,26 @@ export class TaskService {
 
     ensureOwnership(task, userId);
 
-    task.title = data.title;
-    task.description = data.description;
-    task.status = data.status;
-    task.dueDate = normalizeDueDate(data.dueDate ?? undefined) ?? null;
+    const updatedTask = await taskRepository.update(taskId, {
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      dueDate: normalizeDueDate(data.dueDate ?? undefined) ?? null,
+    });
 
-    await task.save();
-
-    logger.info('Tarefa atualizada (PUT) com sucesso.', { userId, taskId: task.id });
-    return task;
+    logger.info('Tarefa atualizada (PUT) com sucesso.', { userId, taskId: updatedTask.id });
+    return updatedTask;
   }
 
   async partiallyUpdateTask(
     userId: string,
     taskId: string,
     payload: unknown
-  ): Promise<TaskDocument> {
+  ): Promise<TaskRecord> {
     ensureValidId(taskId);
     const data = patchTaskSchema.parse(payload);
 
-    const task = await TaskModel.findById(taskId);
+    const task = await taskRepository.findById(taskId);
 
     if (!task) {
       throw new AppError('Tarefa não encontrada.', 404);
@@ -193,32 +171,20 @@ export class TaskService {
 
     ensureOwnership(task, userId);
 
-    if (data.title !== undefined) {
-      task.title = data.title;
-    }
+    const updatedTask = await taskRepository.partialUpdate(taskId, {
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      dueDate: data.dueDate !== undefined ? normalizeDueDate(data.dueDate ?? undefined) ?? null : undefined,
+    });
 
-    if (data.description !== undefined) {
-      task.description = data.description;
-    }
-
-    if (data.status !== undefined) {
-      task.status = data.status;
-    }
-
-    if (data.dueDate !== undefined) {
-      const normalizedDueDate = normalizeDueDate(data.dueDate ?? undefined);
-      task.dueDate = normalizedDueDate ?? null;
-    }
-
-    await task.save();
-
-    logger.info('Tarefa atualizada (PATCH) com sucesso.', { userId, taskId: task.id });
-    return task;
+    logger.info('Tarefa atualizada (PATCH) com sucesso.', { userId, taskId: updatedTask.id });
+    return updatedTask;
   }
 
   async deleteTask(userId: string, taskId: string): Promise<void> {
     ensureValidId(taskId);
-    const task = await TaskModel.findById(taskId);
+    const task = await taskRepository.findById(taskId);
 
     if (!task) {
       throw new AppError('Tarefa não encontrada.', 404);
@@ -226,7 +192,12 @@ export class TaskService {
 
     ensureOwnership(task, userId);
 
-    await task.deleteOne();
+    const deleted = await taskRepository.delete(taskId);
+
+    if (!deleted) {
+      throw new AppError('Tarefa não encontrada.', 404);
+    }
+
     logger.info('Tarefa removida com sucesso.', { userId, taskId: task.id });
   }
 }
