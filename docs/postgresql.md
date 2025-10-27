@@ -65,6 +65,12 @@ POSTGRES_SSL=true
 Com a string configurada, execute a aplicação (via `npm run dev`) para que as migrations sejam aplicadas? **Não há migrations automáticas.** Crie as tabelas manualmente antes de iniciar o servidor. Seguem scripts de referência:
 
 ```sql
+\i sql/schema.sql
+```
+
+O arquivo [`sql/schema.sql`](../sql/schema.sql) contém todas as instruções necessárias:
+
+```sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS users (
@@ -91,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 ```
 
-> Caso o provedor não permita `uuid-ossp`, utilize `gen_random_uuid()` (extensão `pgcrypto`) ou gere UUIDs pela aplicação.
+> **Dica:** se você estiver em um provedor que não permite instalar a extensão `uuid-ossp`, habilite `pgcrypto` (`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`) e troque `uuid_generate_v4()` por `gen_random_uuid()` no arquivo antes de executá-lo.
 
 ## 5. Variáveis de ambiente
 

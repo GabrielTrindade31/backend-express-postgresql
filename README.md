@@ -91,6 +91,8 @@ O repositório inclui um guia completo em [`docs/postgresql.md`](docs/postgresql
 
 Escolha a opção que melhor se adequa ao seu cenário e preencha `DATABASE_URL`/`DATABASE_URL_PROD` conforme indicado.
 
+> Após conectar-se ao banco, execute `\i sql/schema.sql` dentro do `psql` para criar as tabelas e extensões necessárias.
+
 ## Execução local
 
 1. Certifique-se de que o PostgreSQL esteja ativo (via `docker compose up -d postgres` ou serviço gerenciado equivalente).
