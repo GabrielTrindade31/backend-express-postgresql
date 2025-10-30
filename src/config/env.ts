@@ -6,29 +6,36 @@ export interface EnvConfig {
   nodeEnv: string;
   port: number;
   jwtSecret: string;
-  mongoUri: string;
+  databaseUrl: string;
+  databaseSsl: boolean;
 }
 
-const resolveMongoUri = (): string => {
+const resolveDatabaseUrl = (): string => {
   const env = process.env.NODE_ENV ?? 'development';
   if (env === 'production') {
-    return process.env.MONGO_URI_PROD ?? '';
+    return process.env.DATABASE_URL_PROD ?? process.env.DATABASE_URL ?? '';
   }
-  return process.env.MONGO_URI ?? '';
+  return process.env.DATABASE_URL ?? '';
+};
+
+const resolveDatabaseSsl = (): boolean => {
+  const sslValue = process.env.POSTGRES_SSL ?? process.env.DATABASE_SSL ?? '';
+  return ['1', 'true', 'enabled', 'require'].includes(sslValue.toLowerCase());
 };
 
 export const env: EnvConfig = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3333),
   jwtSecret: process.env.JWT_SECRET ?? '',
-  mongoUri: resolveMongoUri(),
+  databaseUrl: resolveDatabaseUrl(),
+  databaseSsl: resolveDatabaseSsl(),
 };
 
 export const validateEnv = (): void => {
   const missing: string[] = [];
 
-  if (!env.mongoUri) {
-    missing.push(env.nodeEnv === 'production' ? 'MONGO_URI_PROD' : 'MONGO_URI');
+  if (!env.databaseUrl) {
+    missing.push(env.nodeEnv === 'production' ? 'DATABASE_URL_PROD' : 'DATABASE_URL');
   }
 
   if (!env.jwtSecret) {
