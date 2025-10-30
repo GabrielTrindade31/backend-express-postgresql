@@ -108,6 +108,30 @@ Escolha a opção que melhor se adequa ao seu cenário e preencha `DATABASE_URL`
 > ```
 >
 > Substitua a URL pelo valor entregue pelo provedor. O parâmetro `sslmode=require` já vem embutido em plataformas como a Neon e garante que a conexão TLS seja aceita.
+>
+> Para um banco criado na **Neon**, o comando ficará parecido com:
+>
+> ```bash
+> psql "postgresql://neondb_owner:SEU_TOKEN@ep-exemplo-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require" -f sql/schema.sql
+> ```
+>
+> Basta ajustar `SEU_TOKEN` e o subdomínio (`ep-exemplo`) com os valores reais fornecidos pelo painel.
+>
+> Viu a mensagem `psql: command not found`? Instale o cliente antes de rodar os comandos acima:
+>
+> - **Debian/Ubuntu (e Codespaces):** `sudo apt-get update && sudo apt-get install -y postgresql-client`
+> - **macOS com Homebrew:** `brew install libpq && brew link --force libpq`
+> - **Windows:** utilize o instalador oficial do PostgreSQL selecionando *Command Line Tools* ou instale o pacote "psql" pelo StackBuilder.
+>
+> Se instalar o cliente não for uma opção, você pode rodar o comando a partir de um contêiner efêmero: `cat sql/schema.sql | docker run --rm -i postgres:16-alpine psql "postgresql://usuario:senha@host:porta/base?sslmode=require"`.
+>
+> Para a Neon, ficaria assim:
+>
+> ```bash
+> cat sql/schema.sql | docker run --rm -i postgres:16-alpine psql "postgresql://neondb_owner:SEU_TOKEN@ep-exemplo-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+> ```
+>
+> Altere `SEU_TOKEN` e `ep-exemplo` para refletir sua string de conexão real.
 
 ## Execução local
 

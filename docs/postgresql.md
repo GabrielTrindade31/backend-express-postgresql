@@ -97,6 +97,34 @@ Se você estiver com o `psql` instalado localmente (ou conectado a um provedor e
 
   > Substitua `usuario`, `senha`, `host`, `porta` e `base` pelos valores fornecidos pelo provedor. No exemplo da Neon, a URL recomendada costuma terminar com `-pooler`.
 
+  Para quem está utilizando **Neon** (como nas credenciais geradas pelos templates da Vercel), o comando completo fica semelhante a:
+
+  ```bash
+  psql "postgresql://neondb_owner:SEU_TOKEN@ep-exemplo-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require" -f sql/schema.sql
+  ```
+
+  Basta substituir `SEU_TOKEN` e o subdomínio `ep-exemplo` pelos valores reais disponibilizados no painel da Neon.
+
+> **E se o comando `psql` não existir?** Instale o cliente antes de executar os exemplos acima.
+>
+> - **Debian/Ubuntu (inclui GitHub Codespaces):** `sudo apt-get update && sudo apt-get install -y postgresql-client`
+> - **macOS com Homebrew:** `brew install libpq` seguido de `brew link --force libpq`
+> - **Windows:** use o instalador oficial do PostgreSQL e marque a opção *Command Line Tools* ou instale o pacote "psql" disponível no [StackBuilder](https://www.postgresql.org/download/windows/).
+>
+> Se você não puder instalar nada no host, execute o cliente a partir de um contêiner efêmero:
+>
+> ```bash
+> cat sql/schema.sql | docker run --rm -i postgres:16-alpine psql "postgresql://usuario:senha@host:porta/base?sslmode=require"
+> ```
+>
+> Para a Neon, o comando ficaria, por exemplo:
+>
+> ```bash
+> cat sql/schema.sql | docker run --rm -i postgres:16-alpine psql "postgresql://neondb_owner:SEU_TOKEN@ep-exemplo-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+> ```
+>
+> O `docker run` baixa a imagem oficial do PostgreSQL, executa o `psql` com a string informada e encerra automaticamente após aplicar o schema.
+
 O arquivo [`sql/schema.sql`](../sql/schema.sql) contém todas as instruções necessárias:
 
 ```sql
