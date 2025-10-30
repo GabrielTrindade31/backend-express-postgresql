@@ -1,16 +1,18 @@
 version: '3.9'
 
 services:
-  mongo:
-    image: mongo:6.0
+  postgres:
+    image: postgres:16
     restart: unless-stopped
     ports:
-      - '27017:27017'
+      - '5432:5432'
     volumes:
-      - mongo-data:/data/db
+      - postgres-data:/var/lib/postgresql/data
     environment:
-      MONGO_INITDB_DATABASE: mini_projeto_fullstack
+      POSTGRES_USER: mini_projeto
+      POSTGRES_PASSWORD: mini_projeto
+      POSTGRES_DB: mini_projeto_fullstack
 
 volumes:
-  mongo-data:
+  postgres-data:
     driver: local

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { AppError } from '../errors/AppError';
-import { UserModel } from '../models/user.model';
+import { userRepository } from '../models/user.model';
 import { env, validateEnv } from '../config/env';
 import logger from '../utils/logger';
 
@@ -57,7 +57,7 @@ export class AuthService {
 
     logger.info('Iniciando registro de usuário', { email: payload.email });
 
-    const existingUser = await UserModel.findOne({ email: payload.email });
+    const existingUser = await userRepository.findByEmail(payload.email);
 
     if (existingUser) {
       logger.warn('Tentativa de registro com e-mail existente', { email: payload.email });
@@ -66,11 +66,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(payload.password, 10);
 
-    const user = await UserModel.create({
-      name: payload.name,
-      email: payload.email,
-      password: hashedPassword,
-    });
+    const user = await userRepository.create(payload.name, payload.email, hashedPassword);
 
     logger.info('Usuário registrado com sucesso', { userId: user.id });
 
@@ -87,7 +83,7 @@ export class AuthService {
 
     logger.info('Tentativa de login recebida', { email: payload.email });
 
-    const user = await UserModel.findOne({ email: payload.email }).select('+password');
+    const user = await userRepository.findByEmail(payload.email);
 
     if (!user) {
       logger.warn('Usuário não encontrado durante login', { email: payload.email });
