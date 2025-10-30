@@ -18,7 +18,7 @@ resources:
     created: 0
     name: Base Environment
     data:
-      base_url: https://mini-projeto-fullstack.vercel.app
+      base_url: https://postgree.onemoretry.net
       token: ""
       token_outro_usuario: ""
       task_id: ""
