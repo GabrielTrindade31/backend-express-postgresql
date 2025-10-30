@@ -243,16 +243,28 @@ Antes de executar as requisições de tarefas configure, no Insomnia/Postman, os
    vercel link
    ```
 
-3. Configure as variáveis de ambiente no painel da Vercel (`DATABASE_URL_PROD`, `POSTGRES_SSL`, `JWT_SECRET`, `NODE_ENV=production`) ou via CLI:
+3. Na aba **Build & Output Settings** do painel, deixe os campos como a tabela abaixo (não há etapa de build dedicada porque o handler em [`api/index.ts`](api/index.ts) é empacotado automaticamente pelo runtime `@vercel/node`):
 
-   ```bash
-   vercel env add DATABASE_URL_PROD production
-   vercel env add POSTGRES_SSL production
-   vercel env add JWT_SECRET production
-   vercel env add NODE_ENV production
-   ```
+   | Campo             | Valor                          |
+   | ----------------- | ------------------------------ |
+   | Build Command     | `None` *(toggle desativado)*   |
+   | Install Command   | `npm install` *(padrão da Vercel)* |
+   | Output Directory  | `N/A` *(deixe em branco)*      |
 
-4. Faça o deploy (primeiro um preview, depois produção):
+   > **Não é necessário configurar `npm run build`.** O runtime da Vercel transpila o projeto automaticamente quando encontra o handler TypeScript, então qualquer comando manual de build pode ser deixado vazio.
+
+4. Configure as variáveis de ambiente no painel da Vercel ou via CLI. Para um banco hospedado na Neon, por exemplo, os valores ficam:
+
+   | Nome               | Exemplo de valor                                             | Observação |
+   | ------------------ | ------------------------------------------------------------ | ---------- |
+   | `DATABASE_URL_PROD`| `postgresql://neondb_owner:***@ep-foo.sa-east-1.aws.neon.tech/neondb?sslmode=require` | String de conexão completa do banco gerenciado. |
+   | `POSTGRES_SSL`     | `true`                                                       | Mantém TLS obrigatório em produção. |
+   | `JWT_SECRET`       | `openssl rand -base64 32` *(valor forte gerado por você)*     | Necessário para assinar tokens. |
+   | `NODE_ENV`         | `production`                                                 | Força o uso de `DATABASE_URL_PROD` e otimizações. |
+
+   Se desejar usar o mesmo banco em previews, replique essas variáveis no escopo `Preview` ou aponte `DATABASE_URL` diretamente para a mesma URL.
+
+5. Faça o deploy (primeiro um preview, depois produção):
 
    ```bash
    vercel --prod
